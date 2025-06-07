@@ -1,0 +1,31 @@
+# --- Интерфейс Streamlit ---
+st.title("📊 OKX Candlestick Scanner")
+
+selected_tf = st.selectbox("Выберите таймфрейм:", TIMEFRAMES)
+selected_patterns = st.multiselect(
+    "Выберите паттерны:", list(PATTERN_FUNCTIONS.keys()),
+    default=["hammer", "engulfing", "doji"]
+)
+
+max_age = st.slider("Максимальный возраст сигнала (в минутах):", 0, 240, 30, step=5)
+
+if st.button("🔍 Начать сканирование"):
+    with st.spinner("Загружаем данные и ищем сигналы..."):
+        symbols = get_okx_symbols()
+        results = []
+        for i, symbol in enumerate(symbols):
+            st.text(f"[{i+1}/{len(symbols)}] {symbol}")
+            signals = process_symbol(symbol, selected_tf, selected_patterns)
+            results.extend(signals)
+            time.sleep(0.15)
+
+    if results:
+        df_results = pd.DataFrame(results)
+        df_filtered = df_results[df_results["age_min"] <= max_age]
+        if df_filtered.empty:
+            st.warning(f"❌ Нет сигналов моложе {max_age} мин.")
+        else:
+            st.success(f"✅ Найдено {len(df_filtered)} сигналов младше {max_age} мин.")
+            st.dataframe(df_filtered)
+    else:
+        st.warning("❌ Паттерны не найдены.")
